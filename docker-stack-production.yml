@@ -1,0 +1,157 @@
+# docker-stack-production.yml
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_DATABASE: eventsdb
+      MYSQL_USER: eventsapp
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deployment/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - backend_network
+    secrets:
+      - mysql_root_password
+      - mysql_password
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Backend Application
+  backend:
+    image: neoevents-backend:${BACKEND_VERSION:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/eventsdb
+      SPRING_DATASOURCE_USERNAME: eventsapp
+      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/mysql_password
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      MAIL_USERNAME_FILE: /run/secrets/mail_username
+      MAIL_PASSWORD_FILE: /run/secrets/mail_password
+      SERVER_PORT: 8080
+    networks:
+      - backend_network
+      - frontend_network
+    secrets:
+      - mysql_password
+      - jwt_secret
+      - mail_username
+      - mail_password
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 30s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - db
+
+  # Frontend Application (Flutter Web)
+  frontend:
+    image: neoevents-frontend:${FRONTEND_VERSION:-latest}
+    networks:
+      - frontend_network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: stop-first
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployment/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./deployment/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - frontend_network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      placement:
+        constraints:
+          - node.role == manager
+    depends_on:
+      - frontend
+      - backend
+
+networks:
+  backend_network:
+    driver: overlay
+    internal: true
+  frontend_network:
+    driver: overlay
+
+volumes:
+  mysql_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+secrets:
+  mysql_root_password:
+    file: ./deployment/secrets/mysql_root_password.txt
+  mysql_password:
+    file: ./deployment/secrets/mysql_password.txt
+  jwt_secret:
+    file: ./deployment/secrets/jwt_secret.txt
+  mail_username:
+    file: ./deployment/secrets/mail_username.txt
+  mail_password:
+    file: ./deployment/secrets/mail_password.txt

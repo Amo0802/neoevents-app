@@ -1,0 +1,15 @@
+CREATE TABLE event (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    image_url VARCHAR(500),
+    address VARCHAR(255),
+    start_date_time TIMESTAMP,
+    price DECIMAL(10,2),
+    city VARCHAR(50),
+    priority INTEGER DEFAULT 0,
+    main_event BOOLEAN DEFAULT FALSE,
+    promoted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
