@@ -1,0 +1,85 @@
+# Deployment secrets (NEVER commit these)
+deployment/secrets/
+deployment/ssl/privkey.pem
+deployment/ssl/fullchain.pem
+*.env
+.env*
+
+# Backend specific (Spring Boot)
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/application-dev.properties
+backend/application-prod.properties
+backend/application.yml
+!backend/application.properties
+
+# Frontend specific (Flutter)
+frontend/build/
+frontend/.dart_tool/
+frontend/.packages
+frontend/.pub-cache/
+frontend/.pub/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.metadata
+
+# Mobile platforms (not needed for web deployment)
+frontend/ios/
+frontend/android/
+frontend/linux/
+frontend/macos/
+frontend/windows/
+
+# Logs and monitoring
+deployment/logs/
+*.log
+
+# Temporary files and backups
+deployment/backups/
+*.tmp
+*.swp
+*~
+*.bak
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Node modules (if any)
+node_modules/
+
+# Docker build context (keep Dockerfiles)
+.dockerignore
+
+# Git submodules (we're not using them)
+.gitmodules
+
+# Database files (local development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificates and keys (keep placeholders)
+*.pem
+*.key
+*.crt
+!deployment/ssl/.gitkeep
+
+# Local environment overrides
+docker-compose.override.yml
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
